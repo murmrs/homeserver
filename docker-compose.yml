@@ -1,0 +1,88 @@
+version: "3"
+
+networks:
+  proxy:
+    external: true
+  internal:
+    external: false
+
+volumes:
+  nextcloud:
+  apps:
+  data:
+  config:
+  mysqldir:
+  bw-data:
+
+services:
+  traefik:
+    image: traefik
+    command: --docker
+    container_name: traefik
+    hostname: traefik
+    environment:
+      - CF_API_EMAIL=${CLOUDFLARE_API_EMAIL}
+      - CF_API_KEY=${CLOUDFLARE_API_KEY}
+    labels:
+      - traefik.frontend.rule=Host:${TRAEFIK_HOST}
+      - traefik.port=8080
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/murmrs/traefik/traefik.toml:/traefik.toml
+      - /home/murmrs/traefik/acme.json:/acme.json
+    networks:
+      - proxy
+    ports:
+      - 80:80
+      - 443:443
+
+  nextcloud:
+    image: nextcloud
+    links:
+      - mysql
+    restart: always
+    volumes:
+      - nextcloud:/var/www/html
+      - apps:/var/www/html/custom_apps
+      - data:/var/www/html/data
+      - config:/var/www/html/config
+    labels:
+      - traefik.backend=nextcloud
+      - traefik.frontend.rule=Host:${NEXTCLOUD_HOST}
+      - traefik.docker.network=proxy
+      - traefik.port=80
+    networks:
+      - internal
+      - proxy
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mariadb:latest
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+    restart: always
+    volumes:
+      - mysqldir:/var/lib/mysql
+    networks:
+      - internal
+    labels:
+      - traefik.enable=false
+
+  bitwarden:
+    image: mprasil/bitwarden:latest
+    volumes:
+      - bw-data:/data/
+    labels:
+      - traefik.docker.network=proxy
+      - traefik.enable=true
+      - traefik.web.frontend.rule=Host:${BITWARDEN_HOST}
+      - traefik.web.port=80
+      - traefik.hub.frontend.rule=Host:${BITWARDEN_HOST};Path:/notifications/hub
+      - traefik.hub.port=3012
+    networks:
+      - proxy

@@ -1,0 +1,29 @@
+defaultEntryPoints = ["http", "https"]
+[web]
+address = ":8080"
+  [web.auth.basic]
+  users = ["admin:{{ encoded password }}"]
+[entryPoints]
+  [entryPoints.http]
+  address = ":80"
+    [entryPoints.http.redirect]
+      entryPoint = "https"
+  [entryPoints.https]
+  address = ":443"
+    [entryPoints.https.tls]
+
+[docker]
+endpoint = "unix:///var/run/docker.sock"
+watch = true
+exposedByDefault = false
+
+[acme]
+email = "{{ your email }}"
+storage = "acme.json"
+onHostRule = true
+entryPoint = "https"
+  [acme.dnsChallenge]
+  provider = "cloudflare"
+  delayBeforeCheck = 30
+   # The following Might not be needed, depending on your hosting situation
+   resolvers = ["1.1.1.1:53", "8.8.8.8:53"]
