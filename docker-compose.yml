@@ -86,3 +86,14 @@ services:
       - traefik.hub.port=3012
     networks:
       - proxy
+
+  
+  homeassistant:
+    container_name: home-assistant
+    image: homeassistant/home-assistant
+    volumes:
+      - haconfig:/config
+      - /etc/localtime:/etc/localtime:ro
+    restart: always
+    networks:
+      - internal
